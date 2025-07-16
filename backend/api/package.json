@@ -1,0 +1,15 @@
+{
+  "name": "manim-executor",
+  "version": "1.0.0",
+  "description": "This is the Manim Executor for Job-Based Execution of Manim",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "Saish",
+  "license": "ISC",
+  "dependencies": {
+    "uuid": "^11.1.0"
+  }
+}
