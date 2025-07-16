@@ -16,7 +16,8 @@ class Job{
         this.jobCode = jobCode;
         this.status = 'waiting';
         this.resultPath = ''
-        
+        this.jobName = jobName.replace(/[^a-zA-Z0-9_-]/g, '_');
+
         const jobPath = `execution/${this.jobId}`;
         fs.mkdirSync(jobPath, { recursive: true });
 
@@ -52,6 +53,10 @@ class Job{
             this.status = 'completed';
             const result = path.join(outputDir, `${this.jobName}.mp4`);
             this.resultPath = result;
+
+            console.log(`✅ Job ${this.jobId} completed. Output: ${this.resultPath}`);
+            console.log(`🧹 Cleaning up job ${this.jobId} after 60 seconds.`);
+
 
             setTimeout(() => {
               fs.rmSync(`execution/${this.jobId}`, { recursive: true, force: true });
