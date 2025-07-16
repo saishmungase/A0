@@ -43,6 +43,14 @@ class JobManager{
           }
         }, 1000);
     }
+
+    polling(jobId) {
+        const job = this.map.get(jobId);
+        if(!job){
+            return;
+        }
+        return job.getStatus();
+    }
 }
 
 export default JobManager
