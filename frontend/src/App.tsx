@@ -1,11 +1,13 @@
+import { Route, BrowserRouter as Router, Routes } from "react-router-dom"
+
 
 function App() {
-
-  return (
-    <div className="bg-red-200">
-      Hey
-    </div>
-  )
+  return <Router>
+    <Routes>
+      <Route path="/" />
+      <Route path="/chat" />
+    </Routes>
+  </Router>  
 }
 
 export default App
