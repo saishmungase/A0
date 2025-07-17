@@ -5,7 +5,7 @@ function App() {
   return <Router>
     <Routes>
       <Route path="/" element={<Landing />} />
-      <Route path="/chat" />
+      <Route path="/studio" />
     </Routes>
   </Router>  
 }

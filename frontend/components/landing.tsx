@@ -251,7 +251,7 @@ const Landing = () => {
               Home
             </motion.a>
             <motion.a
-              href="/chat"
+              href="/studio"
               className="text-white hover:text-green-400 transition-colors duration-300 font-medium"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -325,7 +325,7 @@ const Landing = () => {
             whileHover={{ scale: 1.05, boxShadow: "0 0 30px rgba(34, 197, 94, 0.5)" }}
             whileTap={{ scale: 0.95 }}
             className="px-12 py-4 bg-gradient-to-r from-green-500 to-green-600 text-black font-semibold text-lg rounded-full hover:from-green-400 hover:to-green-500 transition-all duration-300 shadow-lg relative overflow-hidden"
-            href='/chat'
+            href='/studio'
           >
             <motion.a
               className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0"
