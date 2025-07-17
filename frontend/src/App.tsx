@@ -1,10 +1,10 @@
 import { Route, BrowserRouter as Router, Routes } from "react-router-dom"
-
+import Landing from '../components/landing'
 
 function App() {
   return <Router>
     <Routes>
-      <Route path="/" />
+      <Route path="/" element={<Landing />} />
       <Route path="/chat" />
     </Routes>
   </Router>  
