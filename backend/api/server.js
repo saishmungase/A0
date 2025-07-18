@@ -3,6 +3,11 @@ import cors from 'cors'
 import JobManager from './jobManager.js'
 import path from 'path'
 import fs from 'fs'
+import { GoogleGenAI } from '@google/genai'
+import { manimPrompt } from './manimPrompt.js'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 const app = express()
 const PORT = 3000;
@@ -11,6 +16,43 @@ app.use(cors());
 app.use(express.json())
 
 const jobManager = new JobManager();
+
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI });
+
+app.post('/generate', async (req, res) => {
+    const { prompt } = req.body;
+    
+    if (!prompt) {
+        return res.status(400).json({
+            type: 'error',
+            message: 'Missing prompt!'
+        });
+    }
+
+    try {
+        console.log('Generating code for prompt:', prompt);
+        
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: manimPrompt + prompt,
+        });
+
+        const generatedCode = response.text;
+        console.log('Generated code:', generatedCode);
+
+        res.status(200).json({
+            type: 'success',
+            code: generatedCode,
+            message: 'Code generated successfully!'
+        });
+    } catch (error) {
+        console.error('Error generating code:', error);
+        res.status(500).json({
+            type: 'error',
+            message: 'Failed to generate code'
+        });
+    }
+});
 
 app.post('/submit', (req, res) => {
     const body = req.body;
