@@ -1,20 +1,31 @@
 import React, { useState, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { GoogleGenAI } from '@google/genai';
+import { manimPrompt } from '../src/prompt';
+import axios from 'axios';
+import VideoPlayer from '../components/videoPlayer'
+
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 interface StatusCapsuleProps {
-  status: 'queuing' | 'executing' | 'completed' | string;
-  message: string;
+  status: 'queuing' | 'executing' | 'completed' | 'waiting' | 'failed' | string;
+  message: string; 
 }
 
 const StatusCapsule: React.FC<StatusCapsuleProps> = ({ status, message }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'queuing':
+      case 'waiting':
         return 'bg-yellow-500/20 text-yellow-400 border-yellow-400/30';
       case 'executing':
         return 'bg-blue-500/20 text-blue-400 border-blue-400/30';
       case 'completed':
         return 'bg-green-500/20 text-green-400 border-green-400/30';
+      case 'failed':
+        return 'bg-red-500/20 text-red-400 border-red-400/30';
       default:
         return 'bg-gray-500/20 text-gray-400 border-gray-400/30';
     }
@@ -35,44 +46,6 @@ const StatusCapsule: React.FC<StatusCapsuleProps> = ({ status, message }) => {
         />
       )}
       <span>{message}</span>
-    </motion.div>
-  );
-};
-
-interface VideoPlayerProps {
-  videoSrc: string;
-  onClose: () => void;
-}
-
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ videoSrc, onClose }) => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.8, y: 50 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.8, y: 50 }}
-      transition={{ duration: 0.6, ease: 'easeOut' }}
-      className="w-full max-w-4xl mx-auto mb-6 relative"
-    >
-      <div className="relative rounded-2xl overflow-hidden border-2 border-green-400/30 shadow-2xl">
-        <video
-          src={videoSrc}
-          controls
-          autoPlay
-          className="w-full h-auto bg-black"
-          style={{ maxHeight: '60vh' }}
-        >
-          Your browser does not support the video tag.
-        </video>
-
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-black/70 transition-all duration-300"
-        >
-          ✕
-        </motion.button>
-      </div>
     </motion.div>
   );
 };
@@ -123,9 +96,11 @@ const Rules: React.FC = () => {
 };
 
 type StatusObject = {
-  status: 'queuing' | 'executing' | 'completed';
+  status: 'queuing' | 'executing' | 'completed' | 'waiting' | 'failed';
   message: string;
 };
+
+const key = process.env.GEMINI;
 
 const Studio: React.FC = () => {
   const [prompt, setPrompt] = useState('');
@@ -134,32 +109,87 @@ const Studio: React.FC = () => {
   const [currentStatus, setCurrentStatus] = useState<StatusObject | null>(null);
   const [showRules, setShowRules] = useState(true);
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const simulateProcessing = async () => {
     setIsProcessing(true);
     setSubmittedPrompt(prompt);
+    setError(null);
+    setCurrentStatus({ status: 'queuing', message: 'Generating code...' });
 
-    const stages: StatusObject[] = [
-      { status: 'queuing', message: 'Queuing...' },
-      { status: 'executing', message: 'Analyzing prompt...' },
-      { status: 'executing', message: 'Generating frames...' },
-      { status: 'executing', message: 'Rendering video...' },
-      { status: 'completed', message: 'Completed!' },
-    ];
+    try {
+      const ai = new GoogleGenAI({ apiKey: key});
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: manimPrompt + prompt,
+      });
 
-    for (let i = 0; i < stages.length; i++) {
-      setCurrentStatus(stages[i]);
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      console.log(response.text);
+      
+      setCurrentStatus({ status: 'queuing', message: 'Submitting job...' });
+      
+      const message = await axios({
+        method: 'post',
+        url: 'http://localhost:3000/submit',
+        data: {
+          code: response.text,
+          name: 'A0'
+        }
+      });
+      
+      console.log(message);
+      
+      const jobId = message.data.jobId;
+      
+      if (!jobId) {
+        setError('Failed to create job');
+        setIsProcessing(false);
+        return;
+      }
+
+      const interval = setInterval(async () => {
+        try {
+          const res = await axios.post('http://localhost:3000/status', {
+            id: jobId
+          });
+          
+          const { status: currentJobStatus} = res.data;
+
+          console.log('Job status:', currentJobStatus);
+
+          if (currentJobStatus === 'waiting') {
+            setCurrentStatus({ status: 'queuing', message: 'Waiting in queue...' });
+          } else if (currentJobStatus === 'executing') {
+            setCurrentStatus({ status: 'executing', message: 'Rendering animation...' });
+          } else if (currentJobStatus === 'completed') {
+            setCurrentStatus({ status: 'completed', message: 'Animation completed!' });
+            setVideoSrc(`http://localhost:3000/result/${jobId}`);
+            setIsProcessing(false);
+            clearInterval(interval);
+          } else if (currentJobStatus === 'failed') {
+            setError('Animation rendering failed');
+            setIsProcessing(false);
+            clearInterval(interval);
+          }
+        } catch (err) {
+          console.error('Failed to fetch job status:', err);
+          setError('Failed to fetch job status');
+          setIsProcessing(false);
+          clearInterval(interval);
+        }
+      }, 2000);
+
+    } catch (err) {
+      console.error('Error in processing:', err);
+      setError('Something went wrong while processing your request');
+      setIsProcessing(false);
     }
-
-    setVideoSrc('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4');
-    setIsProcessing(false);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (prompt.trim()) {
       setShowRules(false);
-      simulateProcessing();
+      await simulateProcessing();
     }
   };
 
@@ -174,6 +204,7 @@ const Studio: React.FC = () => {
     setCurrentStatus(null);
     setShowRules(true);
     setVideoSrc(null);
+    setError(null);
   };
 
   return (
@@ -254,6 +285,16 @@ const Studio: React.FC = () => {
                     )}
                   </AnimatePresence>
                 </div>
+
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-4 p-4 bg-red-500/20 backdrop-blur-md rounded-xl border border-red-400/30 text-red-400 text-center"
+                  >
+                    {error}
+                  </motion.div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
