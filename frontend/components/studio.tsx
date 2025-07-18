@@ -1,13 +1,7 @@
 import React, { useState, type ChangeEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GoogleGenAI } from '@google/genai';
-import { manimPrompt } from '../src/prompt';
 import axios from 'axios';
 import VideoPlayer from '../components/videoPlayer'
-
-import dotenv from 'dotenv'
-
-dotenv.config()
 
 interface StatusCapsuleProps {
   status: 'queuing' | 'executing' | 'completed' | 'waiting' | 'failed' | string;
@@ -100,8 +94,6 @@ type StatusObject = {
   message: string;
 };
 
-const key = process.env.GEMINI;
-
 const Studio: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [submittedPrompt, setSubmittedPrompt] = useState('');
@@ -118,28 +110,29 @@ const Studio: React.FC = () => {
     setCurrentStatus({ status: 'queuing', message: 'Generating code...' });
 
     try {
-      const ai = new GoogleGenAI({ apiKey: key});
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: manimPrompt + prompt,
+      const codeResponse = await axios.post('http://localhost:3000/generate', {
+        prompt: prompt
       });
 
-      console.log(response.text);
+      if (codeResponse.data.type === 'error') {
+        setError(codeResponse.data.message);
+        setIsProcessing(false);
+        return;
+      }
+
+      const generatedCode = codeResponse.data.code;
+      console.log('Generated code:', generatedCode);
       
       setCurrentStatus({ status: 'queuing', message: 'Submitting job...' });
       
-      const message = await axios({
-        method: 'post',
-        url: 'http://localhost:3000/submit',
-        data: {
-          code: response.text,
-          name: 'A0'
-        }
+      const jobResponse = await axios.post('http://localhost:3000/submit', {
+        code: generatedCode,
+        name: 'A0'
       });
       
-      console.log(message);
+      console.log('Job response:', jobResponse.data);
       
-      const jobId = message.data.jobId;
+      const jobId = jobResponse.data.jobId;
       
       if (!jobId) {
         setError('Failed to create job');
@@ -149,11 +142,11 @@ const Studio: React.FC = () => {
 
       const interval = setInterval(async () => {
         try {
-          const res = await axios.post('http://localhost:3000/status', {
+          const statusResponse = await axios.post('http://localhost:3000/status', {
             id: jobId
           });
           
-          const { status: currentJobStatus} = res.data;
+          const { status: currentJobStatus } = statusResponse.data;
 
           console.log('Job status:', currentJobStatus);
 
