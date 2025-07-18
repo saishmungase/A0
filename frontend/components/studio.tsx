@@ -110,7 +110,7 @@ const Studio: React.FC = () => {
     setCurrentStatus({ status: 'queuing', message: 'Generating code...' });
 
     try {
-      const codeResponse = await axios.post('http://localhost:3000/generate', {
+      const codeResponse = await axios.post('https://animatezero.onrender.com/generate', {
         prompt: prompt
       });
 
@@ -125,7 +125,7 @@ const Studio: React.FC = () => {
       
       setCurrentStatus({ status: 'queuing', message: 'Submitting job...' });
       
-      const jobResponse = await axios.post('http://localhost:3000/submit', {
+      const jobResponse = await axios.post('https://animatezero.onrender.com/submit', {
         code: generatedCode,
         name: 'A0'
       });
@@ -142,7 +142,7 @@ const Studio: React.FC = () => {
 
       const interval = setInterval(async () => {
         try {
-          const statusResponse = await axios.post('http://localhost:3000/status', {
+          const statusResponse = await axios.post('https://animatezero.onrender.com/status', {
             id: jobId
           });
           
@@ -156,7 +156,7 @@ const Studio: React.FC = () => {
             setCurrentStatus({ status: 'executing', message: 'Rendering animation...' });
           } else if (currentJobStatus === 'completed') {
             setCurrentStatus({ status: 'completed', message: 'Animation completed!' });
-            setVideoSrc(`http://localhost:3000/result/${jobId}`);
+            setVideoSrc(`https://animatezero.onrender.com/result/${jobId}`);
             setIsProcessing(false);
             clearInterval(interval);
           } else if (currentJobStatus === 'failed') {
