@@ -8,6 +8,8 @@
 
 **Prompt → Code → Rendered Video**  
 Write what you imagine and watch it animate!
+[![Watch the demo](https://img.youtube.com/vi/OPpAr8HI3S4/0.jpg)](https://youtu.be/OPpAr8HI3S4)
+
 
 ---
 
